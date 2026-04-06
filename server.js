@@ -4,6 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const sequelize = require('./src/config/database');
+const authRoutes = require('./src/routes/authRoutes');
 
 const app = express();
 
@@ -13,24 +14,10 @@ app.use(cors()); // Enable CORS for all routes
 app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON request bodies
 
+app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'E-Commerce API is running!' });
-});
-
-const User = require('./src/models/User');
-
-app.post('/test/user', async (req, res) => {
-  try {
-    const user = await User.create({
-      name: 'Test User',
-      email: 'test@example.com',
-      password: 'Password@123',
-    });
-    res.json(user);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
 });
 
 app.use((req, res) => {
@@ -49,7 +36,7 @@ sequelize
   })
   .then(() => {
     app.listen(3000, () => {
-        console.log(`Server is running on http://localhost:${PORT}`);
+      console.log(`Server is running on http://localhost:${PORT}`);
     });
   })
   .catch((err) => {
