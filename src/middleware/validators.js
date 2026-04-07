@@ -2,13 +2,33 @@ const { body } = require('express-validator');
 
 const registerValidation = [
   body('name').notEmpty().withMessage('Name is required').trim(),
-  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail(),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
 ];
 
 const loginValidation = [
-  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail(),
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
-module.exports = { registerValidation, loginValidation };
+const productValidation = [
+  body('name').notEmpty().withMessage('Product name is required').trim(),
+  body('description').optional().trim(),
+  body('price')
+    .isFloat({ min: 0 })
+    .withMessage('Price must be a positive number'),
+  body('stock')
+    .isInt({ min: 0 })
+    .withMessage('Stock must be a non-negative integer'),
+  body('category').notEmpty().withMessage('Category is required').trim(),
+];
+
+module.exports = { registerValidation, loginValidation, productValidation };

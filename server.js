@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const sequelize = require('./src/config/database');
 const authRoutes = require('./src/routes/authRoutes');
+const productRoutes = require('./src/routes/productRoutes');
 
 const app = express();
 
@@ -15,10 +16,13 @@ app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON request bodies
 
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+
 
 app.get('/', (req, res) => {
   res.json({ message: 'E-Commerce API is running!' });
 });
+
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
