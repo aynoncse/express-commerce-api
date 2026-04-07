@@ -17,7 +17,7 @@ app.use(express.json()); // Parse JSON request bodies
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
-
+app.use('/uploads', express.static('uploads'));
 
 app.get('/', (req, res) => {
   res.json({ message: 'E-Commerce API is running!' });

@@ -3,6 +3,25 @@ const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
 
 /**
+ * Helper: Normalize image paths (convert backslashes to forward slashes)
+ * @param {Array} files - Multer file objects (req.files)
+ * @returns {Array} Array of normalized image paths (e.g., "uploads/product-123.jpg")
+ */
+const normalizeImagePaths = (files) => {
+  if (!files || files.length === 0) return [];
+  return files.map(file => {
+    // Convert Windows backslashes to forward slashes
+    let normalizedPath = file.path.replace(/\\/g, '/');
+    // Ensure path starts with 'uploads/'
+    if (!normalizedPath.startsWith('uploads/')) {
+      normalizedPath = 'uploads/' + normalizedPath.split('/').pop();
+    }
+    return normalizedPath;
+  });
+};
+
+
+/**
  * Get all products with filtering, sorting, pagination, and search capabilities
  * @param {Object} req Request object
  * @param {Object} res Response object
@@ -42,7 +61,6 @@ const getProducts = async (req, res) => {
     const where = {};
 
     if (keyword) {
-      // Sanitize keyword to prevent potential issues
       const sanitizedKeyword = keyword.trim().slice(0, 100);
       if (sanitizedKeyword.length > 0) {
         where.name = { [Op.like]: `%${sanitizedKeyword}%` };
@@ -100,12 +118,12 @@ const getProducts = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching products:', error);
-    
+
     // Differentiate error types
     if (error.name === 'SequelizeValidationError') {
       return res.status(400).json({ error: 'Invalid query parameters' });
     }
-    
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -128,6 +146,7 @@ const getProductById = async (req, res) => {
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
+    
     res.json(product);
   } catch (error) {
     console.error('Error fetching product:', error);
@@ -152,11 +171,7 @@ const addProduct = async (req, res) => {
 
   try {
     const { name, description, price, category, stock } = req.body;
-
-    const images =
-      req.files && req.files.length > 0
-        ? req.files.map((file) => file.path)
-        : [];
+    const images = normalizeImagePaths(req.files);
 
     const product = await Product.create({
       name,
@@ -169,14 +184,14 @@ const addProduct = async (req, res) => {
     res.status(201).json(product);
   } catch (error) {
     console.error('Error creating product:', error);
-    
+
     if (error.name === 'SequelizeValidationError') {
       return res.status(400).json({ error: 'Invalid product data' });
     }
     if (error.name === 'SequelizeUniqueConstraintError') {
       return res.status(409).json({ error: 'Product already exists' });
     }
-    
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -210,10 +225,10 @@ const updateProduct = async (req, res) => {
 
     const { name, description, price, category, stock } = req.body;
 
-    const images =
-      req.files && req.files.length > 0
-        ? req.files.map((file) => file.path)
-        : product.images; // Keep existing images if no new files
+    let images = product.images;
+    if (req.files && req.files.length > 0) {
+      images = normalizeImagePaths(req.files);
+    }
 
     // Only update provided fields
     if (name !== undefined) product.name = name;
@@ -221,7 +236,7 @@ const updateProduct = async (req, res) => {
     if (price !== undefined) product.price = price;
     if (category !== undefined) product.category = category;
     if (stock !== undefined) product.stock = stock;
-    // Images are handled above
+    product.images = images;
 
     await product.save();
 
