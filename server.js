@@ -6,8 +6,12 @@ const helmet = require('helmet');
 const sequelize = require('./src/config/database');
 const authRoutes = require('./src/routes/authRoutes');
 const productRoutes = require('./src/routes/productRoutes');
+const cartRoutes = require('./src/routes/cartRoutes');
+const setupAssociations = require('./src/models/associations');
 
 const app = express();
+
+setupAssociations();
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -17,6 +21,7 @@ app.use(express.json()); // Parse JSON request bodies
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/cart', cartRoutes);
 app.use('/uploads', express.static('uploads'));
 
 app.get('/', (req, res) => {
