@@ -20,10 +20,12 @@ const Order = sequelize.define(
     status: {
       type: DataTypes.ENUM(
         'pending',
+        'paid',
         'processing',
         'shipped',
         'delivered',
         'cancelled',
+        'failed',
       ),
       defaultValue: 'pending',
     },
@@ -37,6 +39,10 @@ const Order = sequelize.define(
     },
     paymentIntentId: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    paymentInfo: {
+      type: DataTypes.JSON,
       allowNull: true,
     },
   },

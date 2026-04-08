@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth, isAdmin } = require('../middleware/auth');
-const { productValidation } = require('../middleware/validators');
+const { productValidation, productUpdateValidation } = require('../middleware/validators');
 const upload = require('../middleware/upload');
 const {
   getProducts,
@@ -31,7 +31,7 @@ router.put(
   auth,
   isAdmin,
   upload.array('images', 5),
-  productValidation,
+  productUpdateValidation,
   updateProduct,
 );
 router.delete('/:id', auth, isAdmin, deleteProduct);
