@@ -3,6 +3,7 @@ const CartItem = require('../models/CartItem');
 const Order = require('../models/Order');
 const OrderItem = require('../models/OrderItem');
 const Product = require('../models/Product');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 /**
  * Retrieves the cart for the given user ID, along with its items and their associated products.
@@ -24,16 +25,9 @@ const getCartWithItems = async (userId) => {
   return { cart, items };
 };
 
-/**
- * Creates a new order for the given user
- * @param {Object} req Request object
- * @param {Object} res Response object
- * @returns {Promise<Object>} JSON response containing the created order
- * @throws {Error} Error creating order
- */
 const createOrder = async (req, res) => {
-  const { shippingAddress, paymentMethod = 'cash_on_delivery' } =
-    req.body || {};
+  const { shippingAddress, paymentMethod = 'stripe' } = req.body || {};
+
   if (!shippingAddress) {
     return res.status(400).json({ message: 'Shipping address is required' });
   }
@@ -86,29 +80,78 @@ const createOrder = async (req, res) => {
       });
     }
 
-    // Reduce product stock
-    for (const item of items) {
-      const product = item.Product;
-      product.stock -= item.quantity;
-      await product.save();
-    }
+    // Create Stripe Payment Intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(total * 100), // Convert to cents
+      currency: 'usd',
+      metadata: { orderId: order.id, userId: req.user.id },
+    });
 
-    // Clear the cart
-    await CartItem.destroy({ where: { cartId: cart.id } });
+    // Save paymentIntentId
+    order.paymentIntentId = paymentIntent.id;
+    await order.save();
 
     res.status(201).json({
-      message: 'Order created successfully',
-      order: {
-        id: order.id,
-        totalAmount: order.totalAmount,
-        status: order.status,
-        createdAt: order.createdAt,
-        items: orderItemsData,
-      },
+      orderId: order.id,
+      clientSecret: paymentIntent.client_secret,
+      totalAmount: total,
     });
   } catch (error) {
     console.error('Error creating order:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+const confirmOrder = async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.orderId);
+
+    const order = await Order.findOne({
+      where: { id: orderId, userId: req.user.id },
+    });
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.status !== 'pending') {
+      return res.status(400).json({ message: `Order already ${order.status}` });
+    }
+
+    // Verify payment with Stripe
+    if(!order.paymentIntentId) {
+      return res.status(400).json({ message: 'No payment intent associated with this order' });
+    }
+    
+    const paymentIntent = await stripe.paymentIntents.retrieve(
+      order.paymentIntentId,
+    );
+
+    if (paymentIntent.status !== 'succeeded') {
+      return res.status(400).json({ message: 'Payment not completed' });
+    }
+
+    // Update order status
+    order.status = 'paid';
+    await order.save();
+    
+    // Reduce stock and clear cart
+    const cart = await Cart.findOne({ where: { userId: req.user.id } });
+
+    if(cart) {
+        const items = await CartItem.findAll({ where: { cartId: cart.id } });
+        for (const item of items) {
+          const product = await Product.findByPk(item.productId);
+          if (product) {
+            product.stock -= item.quantity;
+            await product.save();
+          }
+        }
+        await CartItem.destroy({ where: { cartId: cart.id } });
+    }
+    res.json({ message: 'Order confirmed successfully', order });
+  } catch (error) {
+    console.error('Error confirming order:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
@@ -182,11 +225,11 @@ const cancelOrder = async (req, res) => {
     // Restore product stock
     const items = await OrderItem.findAll({ where: { orderId: order.id } });
     for (const item of items) {
-        const product = await Product.findByPk(item.productId);
-        if (product) {
-            product.stock += item.quantity;
-            await product.save();
-        }
+      const product = await Product.findByPk(item.productId);
+      if (product) {
+        product.stock += item.quantity;
+        await product.save();
+      }
     }
 
     order.status = 'cancelled';
@@ -198,4 +241,4 @@ const cancelOrder = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, getMyOrders, getOrderById, cancelOrder };
+module.exports = { createOrder, getMyOrders, getOrderById, cancelOrder, confirmOrder };
