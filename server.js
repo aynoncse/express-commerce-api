@@ -46,7 +46,7 @@ sequelize
     return sequelize.sync({ alter: true }); // alter: true updates tables to match model (safe for development)
   })
   .then(() => {
-    app.listen(3000, () => {
+    app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
     });
   })

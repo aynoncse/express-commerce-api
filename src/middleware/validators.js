@@ -31,4 +31,23 @@ const productValidation = [
   body('category').notEmpty().withMessage('Category is required').trim(),
 ];
 
-module.exports = { registerValidation, loginValidation, productValidation };
+const productUpdateValidation = [
+  body('name').optional().notEmpty().withMessage('Product name cannot be empty').trim(),
+  body('description').optional().trim(),
+  body('price')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Price must be a positive number'),
+  body('stock')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Stock must be a non-negative integer'),
+  body('category').optional().notEmpty().withMessage('Category cannot be empty').trim(),
+];
+
+module.exports = {
+  registerValidation,
+  loginValidation,
+  productValidation,
+  productUpdateValidation,
+};

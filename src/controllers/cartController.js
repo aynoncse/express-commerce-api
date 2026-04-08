@@ -37,7 +37,7 @@ const getCart = async (req, res) => {
         res.json({ cart, items, total });
     } catch (error) {
         console.error('Error fetching cart:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
     }
 };
 
@@ -49,26 +49,25 @@ const getCart = async (req, res) => {
  * @throws {Error} Error adding to cart
  */
 const addToCart = async (req, res) => {
-    console.log(req.body);
-    
-  const { productId, quantity = 1 } = req.body || {};
+  const { productId } = req.body || {};
+  const quantity = parseInt(req.body?.quantity, 10) || 1;
 
   if (!productId) {
-    return res.status(400).json({ error: 'Product ID is required' });
+    return res.status(400).json({ message: 'Product ID is required' });
   }
 
-  if (quantity < 1) {
-    return res.status(400).json({ error: 'Quantity must be at least 1' });
+  if (Number.isNaN(quantity) || quantity < 1) {
+    return res.status(400).json({ message: 'Quantity must be at least 1' });
   }
 
   try {
     const product = await Product.findByPk(productId);
     if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ message: 'Product not found' });
     }
 
     if (product.stock < quantity) {
-      return res.status(400).json({ error: 'Insufficient stock' });
+      return res.status(400).json({ message: 'Insufficient stock' });
     }
 
     const cart = await getOrCreateCart(req.user.id);
@@ -92,7 +91,7 @@ const addToCart = async (req, res) => {
     res.status(201).json(cartItem);
   } catch (error) {
     console.error('Error adding to cart:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
@@ -104,30 +103,30 @@ const addToCart = async (req, res) => {
  * @throws {Error} Error updating cart item
  */
 const updateCartItem = async(req, res) => {
-    const {quantity} = req.body || {};
+    const quantity = parseInt(req.body?.quantity, 10);
 
-    if (!quantity || quantity < 1) {
-        return res.status(400).json({ error: 'Quantity must be at least 1' });
+    if (Number.isNaN(quantity) || quantity < 1) {
+        return res.status(400).json({ message: 'Quantity must be at least 1' });
     }
 
     try {
         const cartItem = await CartItem.findByPk(req.params.itemId);
         if (!cartItem) {
-            return res.status(404).json({ error: 'Cart item not found' });
+            return res.status(404).json({ message: 'Cart item not found' });
         }
 
         const cart = await Cart.findByPk(cartItem.cartId);
         if (cart.userId !== req.user.id) {
-            return res.status(403).json({ error: 'Unauthorized' });
+            return res.status(403).json({ message: 'Unauthorized' });
         }
 
         const product = await Product.findByPk(cartItem.productId);
         if (!product) {
-            return res.status(404).json({ error: 'Product not found' });
+            return res.status(404).json({ message: 'Product not found' });
         }
 
         if (product.stock < quantity) {
-            return res.status(400).json({ error: 'Insufficient stock' });
+            return res.status(400).json({ message: 'Insufficient stock' });
         }
 
         cartItem.quantity = quantity;
@@ -135,7 +134,7 @@ const updateCartItem = async(req, res) => {
         res.json(cartItem);
     } catch (error) {
         console.error('Error updating cart item:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
     }
 };
 
@@ -150,19 +149,19 @@ const removeCartItem = async (req, res) => {
     try {
         const cartItem = await CartItem.findByPk(req.params.itemId);
         if (!cartItem) {
-            return res.status(404).json({ error: 'Cart item not found' });
+            return res.status(404).json({ message: 'Cart item not found' });
         }
 
         const cart = await Cart.findByPk(cartItem.cartId);
         if (cart.userId !== req.user.id) {
-            return res.status(403).json({ error: 'Unauthorized' });
+            return res.status(403).json({ message: 'Unauthorized' });
         }
 
         await cartItem.destroy();
         res.status(204).send();
     } catch (error) {
         console.error('Error removing cart item:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
     }
 };
 

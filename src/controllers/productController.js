@@ -121,10 +121,10 @@ const getProducts = async (req, res) => {
 
     // Differentiate error types
     if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({ error: 'Invalid query parameters' });
+      return res.status(400).json({ message: 'Invalid query parameters' });
     }
 
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
@@ -139,18 +139,18 @@ const getProductById = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id) || id <= 0) {
-      return res.status(400).json({ error: 'Invalid product ID' });
+      return res.status(400).json({ message: 'Invalid product ID' });
     }
 
     const product = await Product.findByPk(id);
     if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ message: 'Product not found' });
     }
     
     res.json(product);
   } catch (error) {
     console.error('Error fetching product:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
@@ -186,13 +186,13 @@ const addProduct = async (req, res) => {
     console.error('Error creating product:', error);
 
     if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({ error: 'Invalid product data' });
+      return res.status(400).json({ message: 'Invalid product data' });
     }
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(409).json({ error: 'Product already exists' });
+      return res.status(409).json({ message: 'Product already exists' });
     }
 
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
@@ -214,13 +214,13 @@ const updateProduct = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id) || id <= 0) {
-      return res.status(400).json({ error: 'Invalid product ID' });
+      return res.status(400).json({ message: 'Invalid product ID' });
     }
 
     const product = await Product.findByPk(id);
 
     if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ message: 'Product not found' });
     }
 
     const { name, description, price, category, stock } = req.body;
@@ -243,7 +243,7 @@ const updateProduct = async (req, res) => {
     res.status(200).json(product);
   } catch (error) {
     console.error('Error updating product:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
@@ -258,18 +258,18 @@ const deleteProduct = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id) || id <= 0) {
-      return res.status(400).json({ error: 'Invalid product ID' });
+      return res.status(400).json({ message: 'Invalid product ID' });
     }
 
     const product = await Product.findByPk(id);
     if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ message: 'Product not found' });
     }
     await product.destroy();
     res.status(204).send(); // No content for successful deletion
   } catch (error) {
     console.error('Error deleting product:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
