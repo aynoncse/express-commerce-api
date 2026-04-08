@@ -35,6 +35,10 @@ const Order = sequelize.define(
       type: DataTypes.STRING,
       defaultValue: 'cash_on_delivery',
     },
+    paymentIntentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     timestamps: true,
