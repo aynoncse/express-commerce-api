@@ -42,7 +42,7 @@ sequelize
   .then(() => {
     console.log('Database connected...');
     // Sync all models with the database (create tables if they don't exist)
-    return sequelize.sync({ alter: true }); // alter: true updates tables to match model (safe for development)
+    return sequelize.sync();
   })
   .then(() => {
     app.listen(PORT, () => {

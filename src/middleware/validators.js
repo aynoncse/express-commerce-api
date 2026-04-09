@@ -19,6 +19,21 @@ const loginValidation = [
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
+const forgotPasswordValidation = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail(),
+];
+
+const resetPasswordValidation = [
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
+];
+
 const productValidation = [
   body('name').notEmpty().withMessage('Product name is required').trim(),
   body('description').optional().trim(),
@@ -48,6 +63,8 @@ const productUpdateValidation = [
 module.exports = {
   registerValidation,
   loginValidation,
+  forgotPasswordValidation,
+  resetPasswordValidation,
   productValidation,
   productUpdateValidation,
 };
