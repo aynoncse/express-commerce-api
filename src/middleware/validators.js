@@ -19,12 +19,14 @@ const loginValidation = [
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
-const forgotPasswordValidation = [
+const emailValidation = [
   body('email')
     .isEmail()
     .withMessage('Valid email is required')
     .normalizeEmail(),
 ];
+
+const forgotPasswordValidation = emailValidation;
 
 const resetPasswordValidation = [
   body('password')
@@ -96,6 +98,7 @@ const addressUpdateValidation = [
 module.exports = {
   registerValidation,
   loginValidation,
+  emailValidation,
   forgotPasswordValidation,
   resetPasswordValidation,
   updateProfileValidation,

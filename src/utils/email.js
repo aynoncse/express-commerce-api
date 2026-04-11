@@ -27,4 +27,17 @@ const sendPasswordResetEmail = async (userEmail, resetUrl) => {
   });
 };
 
-module.exports = { sendConfirmationEmail, sendPasswordResetEmail };
+const sendVerificationEmail = async (userEmail, verifyUrl) => {
+  await transporter.sendMail({
+    to: userEmail,
+    subject: 'Verify your email address',
+    text: `Thanks for registering! Please verify your email by visiting the link below:\n\n${verifyUrl}\n\nIf you did not create an account, please ignore this email.`,
+    html: `<p>Thanks for registering!</p><p>Verify your email by clicking the link below:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>If you did not create an account, please ignore this email.</p>`,
+  });
+};
+
+module.exports = {
+  sendConfirmationEmail,
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+};
