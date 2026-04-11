@@ -1,4 +1,5 @@
 const User = require('./User');
+const Address = require('./Address');
 const Cart = require('./Cart');
 const CartItem = require('./CartItem');
 const Product = require('./Product');
@@ -6,6 +7,9 @@ const Order = require('./Order');
 const OrderItem = require('./OrderItem');
 
 const setupAssociations = () => {
+  User.hasMany(Address, { foreignKey: 'userId', onDelete: 'CASCADE' });
+  Address.belongsTo(User, { foreignKey: 'userId' });
+
   User.hasOne(Cart, { foreignKey: 'userId', onDelete: 'CASCADE' });
   Cart.belongsTo(User, { foreignKey: 'userId' });
 

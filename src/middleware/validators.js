@@ -71,6 +71,28 @@ const productUpdateValidation = [
   body('category').optional().notEmpty().withMessage('Category cannot be empty').trim(),
 ];
 
+const addressValidation = [
+  body('label').optional().trim().isLength({ max: 50 }).withMessage('Label must be 50 characters or fewer'),
+  body('street').notEmpty().withMessage('Street address is required').trim(),
+  body('city').notEmpty().withMessage('City is required').trim(),
+  body('state').notEmpty().withMessage('State is required').trim(),
+  body('postalCode').notEmpty().withMessage('Postal code is required').trim(),
+  body('country').notEmpty().withMessage('Country is required').trim(),
+  body('phone').optional().trim(),
+  body('isDefault').optional().isBoolean().withMessage('isDefault must be a boolean'),
+];
+
+const addressUpdateValidation = [
+  body('label').optional().trim().isLength({ max: 50 }).withMessage('Label must be 50 characters or fewer'),
+  body('street').optional().notEmpty().withMessage('Street address cannot be empty').trim(),
+  body('city').optional().notEmpty().withMessage('City cannot be empty').trim(),
+  body('state').optional().notEmpty().withMessage('State cannot be empty').trim(),
+  body('postalCode').optional().notEmpty().withMessage('Postal code cannot be empty').trim(),
+  body('country').optional().notEmpty().withMessage('Country cannot be empty').trim(),
+  body('phone').optional().trim(),
+  body('isDefault').optional().isBoolean().withMessage('isDefault must be a boolean'),
+];
+
 module.exports = {
   registerValidation,
   loginValidation,
@@ -80,4 +102,6 @@ module.exports = {
   updatePasswordValidation,
   productValidation,
   productUpdateValidation,
+  addressValidation,
+  addressUpdateValidation,
 };
