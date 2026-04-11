@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const sequelize = require('./src/config/database');
 const authRoutes = require('./src/routes/authRoutes');
+const userRoutes = require('./src/routes/userRoutes');
 const productRoutes = require('./src/routes/productRoutes');
 const cartRoutes = require('./src/routes/cartRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
@@ -21,6 +22,7 @@ app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON request bodies
 
 app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
