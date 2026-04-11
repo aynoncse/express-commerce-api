@@ -14,6 +14,9 @@ const {
   emailValidation,
   resetPasswordValidation,
 } = require('../middleware/validators');
+const unauthenticatedRateLimiter = require('../middleware/rateLimiter');
+
+router.use(unauthenticatedRateLimiter);
 
 router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
