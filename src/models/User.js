@@ -38,6 +38,11 @@ const User = sequelize.define(
       type: DataTypes.ENUM('user', 'admin'),
       defaultValue: 'user',
     },
+    tokenVersion: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
   },
   {
     timestamps: true, // adds createdAt and updatedAt

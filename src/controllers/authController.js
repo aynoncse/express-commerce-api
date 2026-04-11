@@ -108,23 +108,6 @@ const login = async (req, res) => {
  * @returns {Promise<Object>} JSON response containing the user's details
  * @throws {Error} Error during user retrieval
  */
-const getUser = async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id, {
-      attributes: { exclude: ['password'] },
-    });
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json(user);
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-};
-
 /**
  * Generates a JSON Web Token (JWT) for a given user.
  * The token contains the user's id, name, email, and role.
@@ -140,6 +123,7 @@ const generateToken = (user) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE },
@@ -243,7 +227,6 @@ const resetPassword = async (req, res) => {
 };
 
 module.exports = {
-  getUser,
   login,
   register,
   forgotPassword,

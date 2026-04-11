@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 /**
  * Middleware to authenticate a request using a JSON Web Token (JWT)
@@ -9,7 +10,7 @@ const jwt = require('jsonwebtoken');
  * @param {Object} res Response object
  * @param {Function} next Next middleware function
  */
-const auth = (req, res, next) => {
+const auth = async (req, res, next) => {
   let token;
 
   if (
@@ -25,7 +26,23 @@ const auth = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    const user = await User.findByPk(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({ message: 'Unauthorized, invalid token' });
+    }
+
+    if (decoded.tokenVersion !== user.tokenVersion) {
+      return res.status(401).json({ message: 'Unauthorized, invalid token' });
+    }
+
+    req.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      tokenVersion: user.tokenVersion,
+    };
     next();
   } catch (error) {
     console.error('Error verifying token:', error);

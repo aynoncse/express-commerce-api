@@ -10,10 +10,28 @@ const generateToken = (user) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE },
   );
+};
+
+const getMe = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ['password'] },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
 const updateProfile = async (req, res) => {
@@ -88,7 +106,26 @@ const updatePassword = async (req, res) => {
   }
 };
 
+const logout = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.tokenVersion += 1;
+    await user.save();
+
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Error logging out:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
+  getMe,
   updateProfile,
   updatePassword,
+  logout,
 };
