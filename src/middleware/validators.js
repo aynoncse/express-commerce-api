@@ -34,6 +34,17 @@ const resetPasswordValidation = [
     .withMessage('Password must be at least 6 characters long'),
 ];
 
+const updateProfileValidation = [
+  body('name').notEmpty().withMessage('Name is required').trim(),
+];
+
+const updatePasswordValidation = [
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword')
+    .isLength({ min: 6 })
+    .withMessage('New password must be at least 6 characters long'),
+];
+
 const productValidation = [
   body('name').notEmpty().withMessage('Product name is required').trim(),
   body('description').optional().trim(),
@@ -65,6 +76,8 @@ module.exports = {
   loginValidation,
   forgotPasswordValidation,
   resetPasswordValidation,
+  updateProfileValidation,
+  updatePasswordValidation,
   productValidation,
   productUpdateValidation,
 };
