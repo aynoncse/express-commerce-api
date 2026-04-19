@@ -33,27 +33,35 @@ const createOrder = async (userId, orderData) => {
     throw new ApiError(400, 'Cart is empty');
   }
 
+  // Create the Stripe PaymentIntent BEFORE touching the database,
+  // so a Stripe failure never leaves stock decremented with no order.
+  let total = 0;
+  const orderItemsData = [];
+
+  for (const item of items) {
+    const product = item.Product;
+    if (product.stock < item.quantity) {
+      throw new ApiError(400, `Insufficient stock for product: ${product.name}`);
+    }
+    total += item.quantity * product.price;
+    orderItemsData.push({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      quantity: item.quantity,
+      image: product.images ? product.images[0] : null,
+    });
+  }
+
+  // Create Stripe PaymentIntent first — if this fails, nothing in DB is touched
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: Math.round(total * 100),
+    currency: 'usd',
+    // orderId added after order creation below via update
+  });
+
   const transaction = await sequelize.transaction();
   try {
-    let total = 0;
-    const orderItemsData = [];
-
-    for (const item of items) {
-      const product = item.Product;
-      if (product.stock < item.quantity) {
-        await transaction.rollback();
-        throw new ApiError(400, `Insufficient stock for product: ${product.name}`);
-      }
-      total += item.quantity * product.price;
-      orderItemsData.push({
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        quantity: item.quantity,
-        image: product.images ? product.images[0] : null,
-      });
-    }
-
     const order = await Order.create(
       {
         userId,
@@ -61,6 +69,7 @@ const createOrder = async (userId, orderData) => {
         status: 'pending',
         shippingAddress,
         paymentMethod,
+        paymentIntentId: paymentIntent.id,
       },
       { transaction },
     );
@@ -77,16 +86,12 @@ const createOrder = async (userId, orderData) => {
 
     await CartItem.destroy({ where: { cartId: cart.id }, transaction });
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(total * 100),
-      currency: 'usd',
+    await transaction.commit();
+
+    // Update the PaymentIntent metadata with the real orderId now that we have it
+    await stripe.paymentIntents.update(paymentIntent.id, {
       metadata: { orderId: order.id, userId },
     });
-
-    order.paymentIntentId = paymentIntent.id;
-    await order.save({ transaction });
-
-    await transaction.commit();
 
     return {
       orderId: order.id,
@@ -95,9 +100,15 @@ const createOrder = async (userId, orderData) => {
     };
   } catch (error) {
     await transaction.rollback();
-    if (error instanceof ApiError) {
-      throw error;
+
+    // Cancel the PaymentIntent so it doesn't remain open on Stripe
+    try {
+      await stripe.paymentIntents.cancel(paymentIntent.id);
+    } catch (stripeErr) {
+      console.error('Failed to cancel PaymentIntent after DB rollback:', stripeErr.message);
     }
+
+    if (error instanceof ApiError) throw error;
     throw new ApiError(500, 'Error creating order');
   }
 };
@@ -123,21 +134,40 @@ const getMyOrders = async (userId) => {
   });
 };
 
-const confirmOrder = async (userId, orderId, userEmail) => {
+const cancelOrder = async (userId, orderId) => {
   const order = await getOrderByUser(userId, orderId);
   if (order.status !== 'pending') {
-    throw new ApiError(400, `Order already ${order.status}`);
+    throw new ApiError(400, 'Only pending orders can be cancelled');
   }
 
-  if (!order.paymentIntentId) {
-    throw new ApiError(400, 'No payment intent associated with this order');
+  const items = await OrderItem.findAll({ where: { orderId: order.id } });
+  for (const item of items) {
+    const product = await Product.findByPk(item.productId);
+    if (product) {
+      product.stock += item.quantity;
+      await product.save();
+    }
   }
 
-  const paymentIntent = await stripe.paymentIntents.retrieve(order.paymentIntentId);
-  if (paymentIntent.status !== 'succeeded') {
-    throw new ApiError(400, 'Payment not completed');
+  // Cancel the PaymentIntent on Stripe so the customer isn't charged
+  if (order.paymentIntentId) {
+    try {
+      await stripe.paymentIntents.cancel(order.paymentIntentId);
+    } catch (err) {
+      console.error('Failed to cancel PaymentIntent on Stripe:', err.message);
+    }
   }
 
+  order.status = 'cancelled';
+  await order.save();
+  return { message: 'Order cancelled successfully', order };
+};
+
+/**
+ * Called ONLY from the Stripe webhook after payment_intent.succeeded.
+ * Never exposed as a user-facing HTTP endpoint.
+ */
+const confirmOrderByWebhook = async (order, paymentIntent, userEmail) => {
   order.status = 'paid';
   order.paymentInfo = {
     id: paymentIntent.id,
@@ -147,17 +177,17 @@ const confirmOrder = async (userId, orderId, userEmail) => {
     payment_method: paymentIntent.payment_method,
   };
   await order.save();
-  await sendConfirmationEmail(order, userEmail);
 
-  return { message: 'Order confirmed successfully', order };
+  if (userEmail) {
+    await sendConfirmationEmail(order, userEmail);
+  }
 };
 
-const cancelOrder = async (userId, orderId) => {
-  const order = await getOrderByUser(userId, orderId);
-  if (order.status !== 'pending') {
-    throw new ApiError(400, 'Order cannot be cancelled');
-  }
-
+/**
+ * Called ONLY from the Stripe webhook after payment_intent.payment_failed.
+ * Never exposed as a user-facing HTTP endpoint.
+ */
+const failOrderByWebhook = async (order) => {
   const items = await OrderItem.findAll({ where: { orderId: order.id } });
   for (const item of items) {
     const product = await Product.findByPk(item.productId);
@@ -166,37 +196,15 @@ const cancelOrder = async (userId, orderId) => {
       await product.save();
     }
   }
-
-  order.status = 'cancelled';
-  await order.save();
-  return { message: 'Order cancelled successfully', order };
-};
-
-const failOrder = async (userId, orderId) => {
-  const order = await getOrderByUser(userId, orderId);
-  if (order.status !== 'pending') {
-    throw new ApiError(400, `Order already ${order.status}`);
-  }
-
-  const items = await OrderItem.findAll({ where: { orderId: order.id } });
-  for (const item of items) {
-    const product = await Product.findByPk(item.productId);
-    if (product) {
-      product.stock += item.quantity;
-      await product.save();
-    }
-  }
-
   order.status = 'failed';
   await order.save();
-  return { message: 'Order marked as failed', order };
 };
 
 module.exports = {
   createOrder,
   getMyOrders,
   getOrderById: getOrderByUser,
-  confirmOrder,
   cancelOrder,
-  failOrder,
+  confirmOrderByWebhook,
+  failOrderByWebhook,
 };

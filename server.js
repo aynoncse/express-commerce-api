@@ -10,6 +10,7 @@ const addressRoutes = require('./src/routes/addressRoutes');
 const productRoutes = require('./src/routes/productRoutes');
 const cartRoutes = require('./src/routes/cartRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
+const webhookRoutes = require('./src/routes/webhookRoutes');
 const setupAssociations = require('./src/models/associations');
 
 const app = express();
@@ -17,10 +18,20 @@ const app = express();
 setupAssociations();
 
 // Middleware
-app.use(helmet()); // Security headers
-app.use(cors()); // Enable CORS for all routes
-app.use(morgan('dev')); // Logging
-app.use(express.json()); // Parse JSON request bodies
+app.use(helmet());
+
+// Restrict CORS to the configured client origin only
+app.use(cors({
+  origin: process.env.CLIENT_URL,
+  credentials: true,
+}));
+
+app.use(morgan('dev'));
+
+// Stripe webhook MUST use raw body — register before express.json()
+app.use('/api/webhook', webhookRoutes);
+
+app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
@@ -34,18 +45,25 @@ app.get('/', (req, res) => {
   res.json({ message: 'E-Commerce API is running!' });
 });
 
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Database connection and server start
+// Global error handler — catches errors from middleware (multer, body-parser, etc.)
+app.use((err, req, res, next) => {
+  console.error(err);
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || 'Internal server error';
+  res.status(status).json({ message });
+});
+
 const PORT = process.env.PORT || 3000;
 
 sequelize
   .authenticate()
   .then(() => {
     console.log('Database connected...');
-    // Sync all models with the database (create tables if they don't exist)
     return sequelize.sync();
   })
   .then(() => {

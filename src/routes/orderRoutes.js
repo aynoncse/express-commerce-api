@@ -6,8 +6,6 @@ const {
   getMyOrders,
   getOrderById,
   cancelOrder,
-  confirmOrder,
-  failOrder,
 } = require('../controllers/orderController');
 const { auth } = require('../middleware/auth');
 
@@ -17,7 +15,8 @@ router.post('/', createOrder);
 router.get('/my-orders', getMyOrders);
 router.get('/:orderId', getOrderById);
 router.put('/:orderId/cancel', cancelOrder);
-router.put('/:orderId/fail', failOrder);
-router.post('/:orderId/confirm', confirmOrder);
+
+// /confirm and /fail endpoints removed.
+// Order status is now updated automatically via the Stripe webhook.
 
 module.exports = router;

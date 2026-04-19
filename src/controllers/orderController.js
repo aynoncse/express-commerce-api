@@ -8,16 +8,6 @@ const createOrder = asyncHandler(async (req, res) => {
   res.status(201).json(result);
 });
 
-const confirmOrder = asyncHandler(async (req, res) => {
-  const result = await orderService.confirmOrder(req.user.id, req.params.orderId, req.user.email);
-  res.json(result);
-});
-
-const failOrder = asyncHandler(async (req, res) => {
-  const result = await orderService.failOrder(req.user.id, req.params.orderId);
-  res.json(result);
-});
-
 const getMyOrders = asyncHandler(async (req, res) => {
   const orders = await orderService.getMyOrders(req.user.id);
   res.json({ orders });
@@ -33,11 +23,13 @@ const cancelOrder = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+// confirmOrder and failOrder have been removed.
+// Payment confirmation and failure are now handled automatically
+// by the Stripe webhook at POST /api/webhook/stripe.
+
 module.exports = {
   createOrder,
   getMyOrders,
   getOrderById,
   cancelOrder,
-  confirmOrder,
-  failOrder,
 };
